@@ -115,3 +115,4 @@ if __name__ == '__main__':
     Mir.tk.mainloop()
     #while 1:
         #time.sleep(10)
+        
