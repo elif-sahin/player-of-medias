@@ -1,103 +1,129 @@
-from tkinter import filedialog
 import tkinter as tk
+from tkinter import filedialog
 import vlc
 import time
 
+class Screen(tk.Frame):
+    '''
+    Screen widget: Embedded video player from local or youtube
+    '''
+    def GetHandle(self):
+        # Getting frame ID
+        return self.winfo_id()
 
-def chooseFile():
-    root = tk.Tk()
-    root.withdraw()
-    file_path = filedialog.askopenfilename()
-    root.update()
-    return file_path
+    def chooseFile(self):
+        root = tk.Tk()
+        root.withdraw()
+        file_path = filedialog.askopenfilename()
+        root.update()
+        return file_path
 
-def playMusic():
-    file_path = chooseFile()
+    def __init__(self, parent, *args, **kwargs):
+        tk.Frame.__init__(self, parent, bg = 'black')
+        self.settings = { # Inizialazing dictionary settings
+            "width" : 1024,
+            "height" : 576,
+            "o_width":1024,
+            "o_height":30,
+        }
+        self.settings.update(kwargs) # Changing the default settings
+        # Open the video source |temporary
+        self.video_source = self.chooseFile()
 
-    instance = vlc.Instance()
-    player = instance.media_player_new()
-    media = instance.media_new(file_path)
-    print(file_path)
-    media.get_mrl()
-    player.set_media(media)
-    player.play()
-    playing = set([1,2,3,4])
-    time.sleep(1)  # Give time to get going
-    duration = player.get_length() / 1000
-    mm, ss = divmod(duration, 60)
-    print("Playing", file_path, "Length:", "%02d:%02d" % (mm, ss))
-    while True:
-        state = player.get_state()
-        print(player.get_state())
-        if state not in playing:
-            break
-        continue
+        # Canvas where to draw video output
+        self.canvas = tk.Canvas(self, width = self.settings['width'], height = self.settings['height'], bg = "black", highlightthickness = 0)
+        self.canvas.pack()
+
+        self.outer_canvas = tk.Canvas(self, width=self.settings['o_width'], height=self.settings['o_height'], bg="white",
+                                highlightthickness=0)
+        self.outer_canvas.pack()
 
 
-def playmp3list():
-    """
-    p = vlc.MediaPlayer("Whatsapp.mp3")
-    p.play()"""
-
-    file_path = chooseFile()
-    song_list = [file_path]
-    instance = vlc.Instance()
-    for song in song_list:
-        player = instance.media_player_new()
-        media = instance.media_new(song)
-        print (song)
-        media.get_mrl()
-        player.set_media(media)
-        player.play()
-        playing = set([1, 2, 3, 4])
-        time.sleep(1)  # Give time to get going
-        duration = player.get_length() / 1000
-        mm, ss = divmod(duration, 60)
-        print ("Playing", song, "Length:", "%02d:%02d" % (mm, ss))
-        while True:
-            state = player.get_state()
-            if state not in playing:
-                break
-            continue
+        # Creating VLC player
+        self.instance = vlc.Instance()
+        self.player = self.instance.media_player_new()
 
 
 
-def playVideo():
+        Media = self.instance.media_new(self.video_source)
+        Media.get_mrl()
+        self.player.set_media(Media)
 
-    file_path = chooseFile()
+        # self.player.play()
+        self.player.video_set_scale(f_factor=1.5)
+        self.player.set_hwnd(self.GetHandle())
 
-    i = vlc.Instance('--verbose 2'.split())
-    p = i.media_player_new()
-    p.set_mrl(file_path)
-    p.play()
-
-    while True:
-        pass
-
-def main():
-
-    while True:
-        print("\n1: Play Music \n")
-        print("2: Play Video \n")
-        print("Enter 0 to quit \n")
-
-        switch = input()
-
-        if switch == "1":
-            playMusic()
-        elif switch == "2":
-            playVideo()
-        elif switch == "0":
-            return 0
+        self.var = tk.DoubleVar()
+        scale = tk.Scale(self, variable=self.var, orient="horizontal")
+        scale.pack()
 
 
 
 
+    def play(self):
+        # Function to start player from given source
+
+        self.player.play()
+
+
+    def pause(self):
+        self.player.pause()
+
+    def stop(self):
+        self.player.stop()
 
 
 
+class Mirror:
+    '''
+        Mainframe: Display where to put the widgets
+    '''
+    def __init__(self):
+        self.tk = tk.Tk() # Creating the window
+        self.tk.configure(background = 'black')
+        self.tk.update()
 
+        # Setting up the FRAMES for widgets
+        self.bottomFrame = tk.Frame(self.tk, background ='black')
+        self.bottomFrame.pack(side =tk.BOTTOM, fill = tk.BOTH, expand = tk.YES)
+
+        # Bindings and fullscreen setting
+        self.fullscreen = False
+        self.tk.bind("<Return>", self.toggle_fullscreen)
+        self.tk.bind("<Escape>", self.end_fullscreen)
+
+        # Screen, BOT
+        print("Inizializing Screen...")
+        self.screen = Screen(self.bottomFrame)
+        self.screen.pack(side = tk.TOP)
+
+        self.tk.bind("<Key>", self.key) # Get inputs from keyboard
+
+    def key(self, event):
+        pressed = repr(event.char).replace("'", '')
+        if pressed == 'p':
+            self.screen.pause()
+        elif pressed == 'a':
+            self.screen.play()
+        elif pressed == 's':
+            self.screen.stop()
+
+        else:
+            print('fail')
+
+    def toggle_fullscreen(self, event = None):
+        self.fullscreen = True
+        self.tk.attributes("-fullscreen", self.fullscreen)
+
+    def end_fullscreen(self, event = None):
+        self.fullscreen = False
+        self.tk.attributes("-fullscreen", self.fullscreen)
 
 
 if __name__ == '__main__':
-    main()
+    Mir = Mirror()
+    #bot = telepot.Bot(TELEGRAM_TOKEN)
+    #bot.message_loop(on_chat_message)
+    Mir.tk.mainloop()
+    #while 1:
+        #time.sleep(10)
